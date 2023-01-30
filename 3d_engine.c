@@ -120,10 +120,9 @@ void freePoints(struct def3DObj *ex) {
 
 void freeEdges(struct def3DObj *ex) {
     for (int freeFirst = 0; freeFirst < ex->sizeEdge; freeFirst++) {
-        for (int freeSecond = 0; freeSecond < 2; freeSecond++) {
-
-        }
+        free(ex->edges[freeFirst]);
     }
+    free(ex->edges);
 }
 
 int main() {
@@ -145,6 +144,6 @@ int main() {
     gotoxy(0, 0);
 
     freePoints(&sqr);
-    free(sqr.edges);
+    freeEdges(&sqr);
     return 0;
 }
