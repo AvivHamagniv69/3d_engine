@@ -1,9 +1,8 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <signal.h>
+#include <sys/ioctl.h>
+#include <ncurses.h>
 #include <math.h>
+#include <stdio.h>
 
 #define clear() printf("\033[H\033[J")
 #define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
@@ -11,14 +10,10 @@
 // TODO: implement FOV.
 // impplement system to display properly.
 
-int cmprModulIntDouble(int a, double b) {
-    
-}
-
 typedef struct point_struct {
-    int x;
-    int y;
-    int z;
+    double x;
+    double y;
+    double z;
 }point;
 
 typedef struct edge_struct {
@@ -32,10 +27,10 @@ struct def3DObj {
 
     int sizeEdge;
     edge *edges;
-};
+} ;
 
 void printPointValues(point *p) {
-    printf("point x: %d, y: %d, z: %d \n", p->x, p->y, p->z);
+    //printf("point x: %d, y: %d, z: %d \n", p->x, p->y, p->z);
 }
 
 void printEdgeValues(edge *p) {
@@ -52,47 +47,48 @@ void printPointsAndEdges(struct def3DObj *ex) {
 
 void printPoints(struct def3DObj *ex) {
     for (int eachEdge = 0; eachEdge < ex->sizeEdge; eachEdge++) {
-        gotoxy(ex->edges[eachEdge].point1.x, ex->edges[eachEdge].point1.y);
+        gotoxy((int) ex->edges[eachEdge].point1.x, (int) ex->edges[eachEdge].point1.y);
         printf("%c", ex->lookPoints);
 
-        gotoxy(ex->edges[eachEdge].point2.x, ex->edges[eachEdge].point2.y);
+        gotoxy((int) ex->edges[eachEdge].point2.x, (int) ex->edges[eachEdge].point2.y);
         printf("%c", ex->lookPoints);
     }
 }
 
 void printEdge(struct def3DObj *ex, int eachEdge, int primaryAxis, int secondaryAxis, int howMuchPrimaryAxis, int howMuchSecondaryAxis, int whatIsPrimary) {
-    double amtToAddFull = 1.0;
-    double temp = amtToAddFull;
-    double amtToAddDec;
+    double amtToAddTemp = 1;
     if (howMuchPrimaryAxis != 0 && howMuchSecondaryAxis != 0) {
-        amtToAddFull = howMuchPrimaryAxis/howMuchSecondaryAxis;
+        amtToAddTemp = ((double) howMuchPrimaryAxis)/((double)howMuchSecondaryAxis) * 10;
     }
-    amtToAddFull = fmod(amtToAddFull, amtToAddDec);
-    amtToAddDec = temp-amtToAddFull;
 
-    int counter = 1;
+    int amtToAdd = amtToAddTemp;
+    if ((int) amtToAddTemp == 0) {
+        amtToAdd = 10;
+    }
+
+    int counter = 10;
 
     while (primaryAxis < howMuchPrimaryAxis || primaryAxis > howMuchPrimaryAxis) {
         const short int Y_ISNT_ZERO = 0;
 
         if (whatIsPrimary == Y_ISNT_ZERO) {
-            gotoxy(ex->edges[eachEdge].point1.x+secondaryAxis, ex->edges[eachEdge].point1.y+primaryAxis);
+            gotoxy((int) ex->edges[eachEdge].point1.x+secondaryAxis, (int) ex->edges[eachEdge].point1.y+primaryAxis);
         } else {
-            gotoxy(ex->edges[eachEdge].point1.x+primaryAxis, ex->edges[eachEdge].point1.y+secondaryAxis);
+            gotoxy((int) ex->edges[eachEdge].point1.x+primaryAxis, (int) ex->edges[eachEdge].point1.y+secondaryAxis);
         }
         printf("%c", ex->lookEdges);
 
-        if (howMuchSecondaryAxis > 0 && secondaryAxis < howMuchSecondaryAxis && counter % amtToAddFull == 0) {
+        if (howMuchSecondaryAxis > 0 && secondaryAxis < howMuchSecondaryAxis && counter % amtToAdd == 0) {
             secondaryAxis++;
-        } else if (howMuchSecondaryAxis < 0 && secondaryAxis > howMuchSecondaryAxis && counter % amtToAddFull == 0) {
+        } else if (howMuchSecondaryAxis < 0 && secondaryAxis > howMuchSecondaryAxis && counter % amtToAdd == 0) {
             secondaryAxis--;
         }
-        if (howMuchPrimaryAxis > 0 && primaryAxis < howMuchPrimaryAxis) {
+        if (howMuchPrimaryAxis >= 0 && primaryAxis <= howMuchPrimaryAxis) {
             primaryAxis++;
-        } else if (howMuchPrimaryAxis < 0 && primaryAxis > howMuchPrimaryAxis) {
+        } else if (howMuchPrimaryAxis <= 0 && primaryAxis >= howMuchPrimaryAxis) {
             primaryAxis--;
         }
-        counter += 1 + amtToAddDec;
+        counter+=10;
     }
 }
 
@@ -113,26 +109,89 @@ void createEdges(struct def3DObj *ex, ...) {
     va_list args;
     va_start(args, ex);
 
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+
     point arr[ex->sizeEdge*2];
     for (int i = 0; i < ex->sizeEdge*2; i++) {
-        point point = {va_arg(args, int), va_arg(args, int), va_arg(args, int)};
+        point point = {
+            va_arg(args, double),
+            va_arg(args, double) * 2,
+            va_arg(args, double)
+        };
+
+        if (point.z == 0) {
+            point.z = 0.01;
+        }
+        point.x /= point.z;
+        point.y /= point.z;
+        point.z /= point.z;
+
+        point.x *= w.ws_col;
+        point.y *= w.ws_row;
+
+        point.x += (w.ws_col/2);
+        point.y += (w.ws_row/2);
+
         arr[i] = point;
     }
     va_end(args);
-
-    point projectedArr[ex->sizeEdge*2];
-    for (int allcArr1 = 0; allcArr1 < ex->sizeEdge*2; allcArr1++) {
-        projectedArr[allcArr1].x = arr[allcArr1].x/arr[allcArr1].z;
-        projectedArr[allcArr1].y = arr[allcArr1].y/arr[allcArr1].z;
-        projectedArr[allcArr1].z = arr[allcArr1].z/arr[allcArr1].z;
-    }
 
     ex->edges = malloc(sizeof(edge) * ex->sizeEdge);
     int indxEdge = 0;
     int indxPoint = 0;
     while (indxEdge < ex->sizeEdge) {
-        ex->edges[indxEdge].point1 = projectedArr[indxEdge];
-        ex->edges[indxEdge].point2 = projectedArr[indxEdge+1];
+        ex->edges[indxEdge].point1 = arr[indxPoint];
+        ex->edges[indxEdge].point2 = arr[indxPoint+1];
+        indxEdge++;
+        indxPoint += 2;
+    }
+}
+
+void addToPoints(struct def3DObj *ex, ...) {
+    va_list args;
+    va_start(args, ex);
+
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+
+    point arr[ex->sizeEdge*2];
+    for (int i = 0; i < ex->sizeEdge*2; i++) {
+        point point = {
+            va_arg(args, double),
+            va_arg(args, double),
+            va_arg(args, double)
+        };
+
+        if (point.z == 0) {
+            point.z = 0.01;
+        }
+        point.x /= point.z;
+        point.y /= point.z;
+        point.z /= point.z;
+
+        point.x *= w.ws_col;
+        point.y *= w.ws_row;
+
+        point.x += (w.ws_col/2);
+        point.y += (w.ws_row/2);
+
+        arr[i] = point;
+    }
+    va_end(args);
+
+    ex->edges = malloc(sizeof(edge) * ex->sizeEdge);
+    int indxEdge = 0;
+    int indxPoint = 0;
+    while (indxEdge < ex->sizeEdge) {
+        ex->edges[indxEdge].point1.x += arr[indxPoint].x;
+        ex->edges[indxEdge].point1.y += arr[indxPoint].y;
+        ex->edges[indxEdge].point1.z += arr[indxPoint].z;
+
+        ex->edges[indxEdge].point2.x += arr[indxPoint+1].x;
+        ex->edges[indxEdge].point2.y += arr[indxPoint+1].y;
+        ex->edges[indxEdge].point2.z += arr[indxPoint+1].z;
+
         indxEdge++;
         indxPoint += 2;
     }
@@ -140,19 +199,53 @@ void createEdges(struct def3DObj *ex, ...) {
 
 int main() {
     clear();
+
     struct def3DObj sqr;
     sqr.lookPoints = '*';
 
-    sqr.sizeEdge = 1;
+    sqr.sizeEdge = 12;
     sqr.lookEdges = '*';
 
-    createEdges(&sqr, 10, 10, 1, 25, 20, 1);
-    printPointsAndEdges(&sqr);
+    createEdges(&sqr,
+        0.1, 0.1, 1.0,
+        0.1, 0.1, 1.5,
+
+        0.1, 0.2, 1.0,
+        0.1, 0.2, 1.5,
+
+        0.2, 0.1, 1.0,
+        0.2, 0.1, 1.5,
+
+        0.2, 0.2, 1.0,
+        0.2, 0.2, 1.5,
+
+        0.1, 0.1, 1.0,
+        0.2, 0.1, 1.0,
+
+        0.1, 0.1, 1.0,
+        0.1, 0.2, 1.0,
+
+        0.2, 0.2, 1.0,
+        0.2, 0.1, 1.0,
+
+        0.2, 0.2, 1.0,
+        0.1, 0.2, 1.0,
+
+        0.1, 0.1, 1.5,
+        0.2, 0.1, 1.5,
+
+        0.1, 0.1, 1.5,
+        0.1, 0.2, 1.5,
+
+        0.2, 0.2, 1.5,
+        0.2, 0.1, 1.5,
+
+        0.2, 0.2, 1.5,
+        0.1, 0.2, 1.5
+    );
     printPoints(&sqr);
     printEdges(&sqr);
-
-    gotoxy(100, 0);
-
+    gotoxy(0, 0);
     free(sqr.edges);
     return 0;
 }
