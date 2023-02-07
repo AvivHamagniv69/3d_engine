@@ -3,6 +3,7 @@
 #include <ncurses.h>
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #define clear() printf("\033[H\033[J")
 #define gotoxy(x,y) printf("\033[%d;%dH", (y), (x))
@@ -24,6 +25,9 @@ struct def3DObj {
     int isUsed;
     char lookPoints;
     char lookEdges;
+
+    int sizePoints;
+    point *points;
 
     int sizeEdge;
     edge *edges;
@@ -55,43 +59,6 @@ void printPoints(struct def3DObj *ex) {
     }
 }
 
-void printEdge(struct def3DObj *ex, int eachEdge, int primaryAxis, int secondaryAxis, int howMuchPrimaryAxis, int howMuchSecondaryAxis, int whatIsPrimary) {
-    double amtToAddTemp = 1;
-    if (howMuchPrimaryAxis != 0 && howMuchSecondaryAxis != 0) {
-        amtToAddTemp = ((double) howMuchPrimaryAxis)/((double)howMuchSecondaryAxis) * 10;
-    }
-
-    int amtToAdd = amtToAddTemp;
-    if ((int) amtToAddTemp == 0) {
-        amtToAdd = 10;
-    }
-
-    int counter = 10;
-
-    while (primaryAxis < howMuchPrimaryAxis || primaryAxis > howMuchPrimaryAxis) {
-        const short int Y_ISNT_ZERO = 0;
-
-        if (whatIsPrimary == Y_ISNT_ZERO) {
-            gotoxy((int) ex->edges[eachEdge].point1.x+secondaryAxis, (int) ex->edges[eachEdge].point1.y+primaryAxis);
-        } else {
-            gotoxy((int) ex->edges[eachEdge].point1.x+primaryAxis, (int) ex->edges[eachEdge].point1.y+secondaryAxis);
-        }
-        printf("%c", ex->lookEdges);
-
-        if (howMuchSecondaryAxis > 0 && secondaryAxis < howMuchSecondaryAxis && counter % amtToAdd == 0) {
-            secondaryAxis++;
-        } else if (howMuchSecondaryAxis < 0 && secondaryAxis > howMuchSecondaryAxis && counter % amtToAdd == 0) {
-            secondaryAxis--;
-        }
-        if (howMuchPrimaryAxis >= 0 && primaryAxis <= howMuchPrimaryAxis) {
-            primaryAxis++;
-        } else if (howMuchPrimaryAxis <= 0 && primaryAxis >= howMuchPrimaryAxis) {
-            primaryAxis--;
-        }
-        counter+=10;
-    }
-}
-
 void printEdges(struct def3DObj *ex) {
     for (int eachEdge = 0; eachEdge < ex->sizeEdge; eachEdge++) {
         int howMuchX = ex->edges[eachEdge].point2.x - ex->edges[eachEdge].point1.x;
@@ -100,8 +67,67 @@ void printEdges(struct def3DObj *ex) {
         int x = 0;
         int y = 0;
 
-        if (howMuchY != 0) {printEdge(ex, eachEdge, y, x, howMuchY, howMuchX, 0);}
-        else if (howMuchX != 0) {printEdge(ex, eachEdge, x, y, howMuchX, howMuchY, 1);}
+        if (howMuchY != 0 && abs(howMuchY) >= abs(howMuchX)) {
+                int amtToAdd = 1;
+
+                if (howMuchY != 0 && howMuchX != 0) {
+                    amtToAdd = ((double) howMuchY)/((double)howMuchX);
+                }
+                if (amtToAdd == 0) {
+                    amtToAdd = 1;
+                }
+
+                int counter = 0;
+
+                while (y < howMuchY || y > howMuchY) {
+                    gotoxy((int) ex->edges[eachEdge].point1.x+x, (int) ex->edges[eachEdge].point1.y+y);
+
+                    printf("%c", ex->lookEdges);
+
+                    if (howMuchX > 0 && x < howMuchX && counter % amtToAdd == 0) {
+                        x++;
+                    } else if (howMuchX < 0 && x > howMuchX && counter % amtToAdd == 0) {
+                        x--;
+                    }
+                    if (howMuchY > 0 && y < howMuchY) {
+                        y++;
+                    } else if (howMuchY < 0 && y > howMuchY) {
+                        y--;
+                    }
+                    counter++;
+                }
+        }
+
+        else if (howMuchX != 0 && abs(howMuchX) >= abs(howMuchY)) {
+                int amtToAdd = 1;
+
+                if (howMuchY != 0 && howMuchX != 0) {
+                    amtToAdd = ((double) howMuchX)/((double)howMuchY);
+                }
+                if (amtToAdd == 0) {
+                    amtToAdd = 1;
+                }
+
+                int counter = 0;
+
+                while (x < howMuchX || x > howMuchX) {
+                    gotoxy((int) ex->edges[eachEdge].point1.x+x, (int) ex->edges[eachEdge].point1.y+y);
+
+                    printf("%c", ex->lookEdges);
+
+                    if (howMuchX > 0 && x < howMuchX) {
+                        x++;
+                    } else if (howMuchX < 0 && x > howMuchX) {
+                        x--;
+                    }
+                    if (howMuchY > 0 && y < howMuchY && counter % amtToAdd == 0) {
+                        y++;
+                    } else if (howMuchY < 0 && y > howMuchY && counter % amtToAdd == 0) {
+                        y--;
+                    }
+                    counter++;
+                }
+        }
     }
 }
 
@@ -160,12 +186,9 @@ void addToPoints(struct def3DObj *ex, ...) {
         point point = {
             va_arg(args, double),
             va_arg(args, double),
-            va_arg(args, double)
+            va_arg(args, double) * 2
         };
 
-        if (point.z == 0) {
-            point.z = 0.01;
-        }
         point.x /= point.z;
         point.y /= point.z;
         point.z /= point.z;
@@ -180,7 +203,6 @@ void addToPoints(struct def3DObj *ex, ...) {
     }
     va_end(args);
 
-    ex->edges = malloc(sizeof(edge) * ex->sizeEdge);
     int indxEdge = 0;
     int indxPoint = 0;
     while (indxEdge < ex->sizeEdge) {
@@ -199,7 +221,6 @@ void addToPoints(struct def3DObj *ex, ...) {
 
 int main() {
     clear();
-
     struct def3DObj sqr;
     sqr.lookPoints = '*';
 
@@ -243,9 +264,17 @@ int main() {
         0.2, 0.2, 1.5,
         0.1, 0.2, 1.5
     );
+
     printPoints(&sqr);
     printEdges(&sqr);
+    sleep(1);
+
     gotoxy(0, 0);
+
+    struct winsize w;
+    ioctl(0, TIOCGWINSZ, &w);
+    printf("%d \n", w.ws_col);
+    printf("%d \n", w.ws_row);
     free(sqr.edges);
     return 0;
 }
