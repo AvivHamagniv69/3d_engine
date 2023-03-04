@@ -27,7 +27,6 @@ void drawCircle(const uint x, const uint y, const uint radius)
         drawPixel(x-yoff, y+xoff);        // 2
         drawPixel(x-xoff, y-yoff);        // 3
         drawPixel(x+yoff, y-xoff);        // 4
-
         drawPixel(x-xoff, y+yoff);        // 5
         drawPixel(x-yoff, y-xoff);        // 6
         drawPixel(x+xoff, y-yoff);        // 7
@@ -743,20 +742,19 @@ void moveObjz(obj3d* obj3d, double howMuchToMove) {
     obj3d->originPoint = findOriginPointByGeometry(obj3d->points.arr, obj3d->points.length);
 }
 
-int growArrP(dynamicArrP* dynamicArrP, int amtToAdd) {
-    int length = dynamicArrP->length+amtToAdd;
-    int capacity = length+1000;
+int reallocArrP(dynamicArrP* dynamicArrP, size_t newSize) {
+    int capacity = newSize+1000;
     dynamicArrP->arr = (point*) realloc(dynamicArrP->arr, sizeof(point) * capacity);
     if (dynamicArrP->arr == NULL) {
         return 1;
     }
-    dynamicArrP->length = length;
+    dynamicArrP->length = newSize;
     dynamicArrP->capacity = capacity;
 
     return 0;
 }
 
-void addElementP(dynamicArrP* dynamicArrP, int amtToAdd, ...) {
+int addElementP(dynamicArrP* dynamicArrP, size_t amtToAdd, ...) {
     va_list args;
     va_start(args, amtToAdd);
 
@@ -776,17 +774,130 @@ void addElementP(dynamicArrP* dynamicArrP, int amtToAdd, ...) {
             dynamicArrP->arr[i+dynamicArrP->length] = arr[i];
         }
         dynamicArrP->length += amtToAdd;
-        return;
+        return 0;
     }
 
-    int check = growArrP(dynamicArrP, amtToAdd);
+    int check = reallocArrP(dynamicArrP, dynamicArrP->length + amtToAdd);
     if (check == 1) {
         // reallocating has failed
-        return;
+        return 1;
     }
     for (int i = 0; i < amtToAdd; i++) {
         dynamicArrP->arr[dynamicArrP->length-amtToAdd+i] = arr[i];
     }
+    return 0;
+}
+
+int removeElementP(dynamicArrP* dynamicArrP, size_t amtToRemove, ...) {
+    va_list args;
+    va_start(args, amtToRemove);
+
+    int arr[amtToRemove];
+    for (int i = 0; i < amtToRemove; i++) {
+        arr[i] = va_arg(args, int);
+    }
+    va_end(args);
+
+    for (int i = 0; i < dynamicArrP->length; i++) {
+        for (int j = 0; j < amtToRemove; j++) {
+            if (i == arr[j]) {
+                for (int k = i; k < dynamicArrP->length-1; k++) {
+                    dynamicArrP->arr[k] = dynamicArrP->arr[k+1];
+                }
+                dynamicArrP->arr[dynamicArrP->length].x = 0;
+                dynamicArrP->arr[dynamicArrP->length].y = 0;
+                dynamicArrP->arr[dynamicArrP->length].z = 0;
+            }
+        }
+
+    }
+    dynamicArrP->length -= amtToRemove;
+    if (dynamicArrP->length+1000 < dynamicArrP->capacity) {
+        int check = reallocArrP(dynamicArrP, dynamicArrP->length);
+        if (check == 1) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int reallocArrE(dynamicArrE* dynamicArrE, size_t newSize) {
+    int capacity = newSize+1000;
+    dynamicArrE->arr = (edge*) realloc(dynamicArrE->arr, sizeof(edge) * capacity);
+    if (dynamicArrE->arr == NULL) {
+        return 1;
+    }
+    dynamicArrE->length = newSize;
+    dynamicArrE->capacity = capacity;
+
+    return 0;
+}
+
+int addElementE(dynamicArrP* dynamicArrP, dynamicArrE* dynamicArrE, int amtToAdd, ...) {
+    va_list args;
+    va_start(args, amtToAdd);
+
+    edge arr[amtToAdd];
+    for (int i = 0; i < amtToAdd; i++) {
+        edge edge = {
+            &(dynamicArrP->arr[va_arg(args, int)]),
+            &(dynamicArrP->arr[va_arg(args, int)])
+        };
+        arr[i] = edge;
+    }
+    va_end(args);
+
+    if (amtToAdd+dynamicArrE->length < dynamicArrE->capacity) {
+        for (int i = 0; i < amtToAdd+dynamicArrE->length; i++) {
+            dynamicArrE->arr[i+dynamicArrE->length] = arr[i];
+        }
+        dynamicArrE->length += amtToAdd;
+        return 0;
+    }
+
+    int check = reallocArrE(dynamicArrE, dynamicArrE->length + amtToAdd);
+    if (check == 1) {
+        // reallocating has failed
+        return 1;
+    }
+    for (int i = 0; i < amtToAdd; i++) {
+        dynamicArrE->arr[dynamicArrE->length-amtToAdd+i] = arr[i];
+    }
+    return 0;
+}
+
+int removeElementE(dynamicArrE* dynamicArrE, size_t amtToRemove, ...) {
+    va_list args;
+    va_start(args, amtToRemove);
+
+    int arr[amtToRemove];
+    for (int i = 0; i < amtToRemove; i++) {
+        arr[i] = va_arg(args, int);
+    }
+    va_end(args);
+
+    for (int i = 0; i < dynamicArrP->length; i++) {
+        for (int j = 0; j < amtToRemove; j++) {
+            if (i == arr[j]) {
+                for (int k = i; k < dynamicArrP->length-1; k++) {
+                    dynamicArrP->arr[k] = dynamicArrP->arr[k+1];
+                }
+                dynamicArrP->arr[dynamicArrP->length].x = 0;
+                dynamicArrP->arr[dynamicArrP->length].y = 0;
+                dynamicArrP->arr[dynamicArrP->length].z = 0;
+            }
+        }
+
+    }
+    dynamicArrP->length -= amtToRemove;
+    if (dynamicArrP->length+1000 < dynamicArrP->capacity) {
+        int check = reallocArrP(dynamicArrP, dynamicArrP->length);
+        if (check == 1) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int main() {
@@ -827,16 +938,17 @@ int main() {
         3,7
     );
     printPoints(sqr.points.arr, sqr.points.length, sqr.lookPoints, camera);
-    printEdges(sqr, camera);
+    //printEdges(sqr, camera);
+
     msleep(60);
     clear();
     while(1) {
         //rotateObjx(&sqr, 3);
         //rotateObjy(&sqr, 3);
-        rotateObjz(&sqr, 3);
+        rotateObjz(&sqr, 1);
         //moveObjx(&sqr, 0.02);
         printPoints(sqr.points.arr, sqr.points.length, sqr.lookPoints, camera);
-        printEdges(sqr, camera);
+        //printEdges(sqr, camera);
         printPoint(sqr.originPoint, camera, 'X');
 
         point o = projectPoint(sqr.originPoint, camera);
@@ -844,7 +956,7 @@ int main() {
         //printf("%f, %f, %f\n", sqr.originPoint.x, sqr.originPoint.y, sqr.originPoint.z);
         //printf("%d, %d", w.ws_col, w.ws_row);
 
-        msleep(600);
+        msleep(60);
         clear();
     }
 
