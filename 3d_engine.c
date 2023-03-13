@@ -883,9 +883,6 @@ int removeElementE(dynamicArrE* dynamicArrE, size_t amtToRemove, ...) {
                 for (int k = i; k < dynamicArrE->length-1; k++) {
                     dynamicArrE->arr[k] = dynamicArrE->arr[k+1];
                 }
-                dynamicArrE->arr[dynamicArrE->length].x = 0;
-                dynamicArrE->arr[dynamicArrE->length].y = 0;
-                dynamicArrE->arr[dynamicArrE->length].z = 0;
             }
         }
 
