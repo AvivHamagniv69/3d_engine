@@ -889,7 +889,7 @@ int removeElementE(dynamicArrE* dynamicArrE, size_t amtToRemove, ...) {
     }
     dynamicArrE->length -= amtToRemove;
     if (dynamicArrE->length+1000 < dynamicArrE->capacity) {
-        int check = reallocArrP(dynamicArrP, dynamicArrP->length);
+        int check = reallocArrE(dynamicArrE, dynamicArrE->length);
         if (check == 1) {
             return 1;
         }
