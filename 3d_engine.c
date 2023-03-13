@@ -877,21 +877,21 @@ int removeElementE(dynamicArrE* dynamicArrE, size_t amtToRemove, ...) {
     }
     va_end(args);
 
-    for (int i = 0; i < dynamicArrP->length; i++) {
+    for (int i = 0; i < dynamicArrE->length; i++) {
         for (int j = 0; j < amtToRemove; j++) {
             if (i == arr[j]) {
-                for (int k = i; k < dynamicArrP->length-1; k++) {
-                    dynamicArrP->arr[k] = dynamicArrP->arr[k+1];
+                for (int k = i; k < dynamicArrE->length-1; k++) {
+                    dynamicArrE->arr[k] = dynamicArrE->arr[k+1];
                 }
-                dynamicArrP->arr[dynamicArrP->length].x = 0;
-                dynamicArrP->arr[dynamicArrP->length].y = 0;
-                dynamicArrP->arr[dynamicArrP->length].z = 0;
+                dynamicArrE->arr[dynamicArrE->length].x = 0;
+                dynamicArrE->arr[dynamicArrE->length].y = 0;
+                dynamicArrE->arr[dynamicArrE->length].z = 0;
             }
         }
 
     }
-    dynamicArrP->length -= amtToRemove;
-    if (dynamicArrP->length+1000 < dynamicArrP->capacity) {
+    dynamicArrE->length -= amtToRemove;
+    if (dynamicArrE->length+1000 < dynamicArrE->capacity) {
         int check = reallocArrP(dynamicArrP, dynamicArrP->length);
         if (check == 1) {
             return 1;
